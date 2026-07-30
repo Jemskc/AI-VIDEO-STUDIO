@@ -13,6 +13,7 @@ from app.api.v1.models.router import router as models_router
 from app.api.v1.notifications.router import router as notifications_router
 from app.api.v1.settings.router import router as settings_router
 from app.api.v1.storyboards.router import router as storyboards_router
+from app.api.intelligence import router as intelligence_router
 import logging
 
 # Configure logging
@@ -67,6 +68,7 @@ app.include_router(render_router, prefix=settings.API_V1_PREFIX)
 app.include_router(models_router, prefix=settings.API_V1_PREFIX)
 app.include_router(notifications_router, prefix=settings.API_V1_PREFIX)
 app.include_router(settings_router, prefix=settings.API_V1_PREFIX)
+app.include_router(intelligence_router)  # Intelligence router has its own prefix
 
 
 @app.get("/")

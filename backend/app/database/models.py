@@ -121,7 +121,7 @@ class Character(Base):
 
 
 class Scene(Base):
-    __tablename__ = "scenes"
+    __tablename__ = "scenes_v1"
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
@@ -176,7 +176,7 @@ class Asset(Base):
     height = Column(Integer)
     duration = Column(Integer)  # for audio/video
     thumbnail_url = Column(String)
-    metadata = Column(JSON)
+    asset_metadata = Column(JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
