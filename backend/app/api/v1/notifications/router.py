@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from app.database.models import Notification, get_db
 from app.database.schemas import NotificationCreate, NotificationResponse
+from app.auth.dependencies import get_current_user_id
 from datetime import datetime
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
@@ -14,7 +15,7 @@ def get_notifications(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    user_id: int = 1
+    user_id: int = Depends(get_current_user_id)
 ):
     """Get all notifications for the current user."""
     query = db.query(Notification).filter(Notification.user_id == user_id)
@@ -27,7 +28,7 @@ def get_notifications(
 
 
 @router.post("/", response_model=NotificationResponse, status_code=status.HTTP_201_CREATED)
-def create_notification(notification_data: NotificationCreate, db: Session = Depends(get_db), user_id: int = 1):
+def create_notification(notification_data: NotificationCreate, db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Create a new notification (internal use)."""
     new_notification = Notification(
         user_id=user_id,
@@ -42,7 +43,7 @@ def create_notification(notification_data: NotificationCreate, db: Session = Dep
 
 
 @router.put("/{notification_id}/read", response_model=NotificationResponse)
-def mark_as_read(notification_id: int, db: Session = Depends(get_db), user_id: int = 1):
+def mark_as_read(notification_id: int, db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Mark a notification as read."""
     notification = db.query(Notification).filter(
         Notification.id == notification_id,
@@ -63,7 +64,7 @@ def mark_as_read(notification_id: int, db: Session = Depends(get_db), user_id: i
 
 
 @router.put("/read-all", status_code=status.HTTP_204_NO_CONTENT)
-def mark_all_as_read(db: Session = Depends(get_db), user_id: int = 1):
+def mark_all_as_read(db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Mark all notifications as read."""
     db.query(Notification).filter(
         Notification.user_id == user_id,
@@ -76,7 +77,7 @@ def mark_all_as_read(db: Session = Depends(get_db), user_id: int = 1):
 
 
 @router.delete("/{notification_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_notification(notification_id: int, db: Session = Depends(get_db), user_id: int = 1):
+def delete_notification(notification_id: int, db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Delete a notification."""
     notification = db.query(Notification).filter(
         Notification.id == notification_id,
@@ -96,7 +97,7 @@ def delete_notification(notification_id: int, db: Session = Depends(get_db), use
 
 
 @router.get("/unread/count")
-def get_unread_count(db: Session = Depends(get_db), user_id: int = 1):
+def get_unread_count(db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Get count of unread notifications."""
     count = db.query(Notification).filter(
         Notification.user_id == user_id,

@@ -13,9 +13,6 @@ from enum import Enum
 from dataclasses import dataclass, field
 import uuid
 
-from app.models.render_job import RenderJobStatus
-from app.database.session import get_db
-
 logger = logging.getLogger(__name__)
 
 
@@ -494,6 +491,56 @@ class Orchestrator:
     async def get_task(self, task_id: str) -> Optional[Task]:
         """Get a task by ID."""
         return self._tasks.get(task_id)
+
+    async def run_plan_to_completion(
+        self,
+        plan_id: str,
+        workers: List[Any],
+        max_iterations: int = 2000,
+    ) -> ExecutionPlan:
+        """
+        Drive a single execution plan to completion synchronously within the
+        caller (e.g. a Celery task), rather than relying on BaseWorker.start()'s
+        infinite poll loop which is meant for a long-lived worker process.
+
+        Repeatedly pulls the next ready task per worker type and executes it
+        until the plan finishes, nothing more can make progress (e.g. a failed
+        task blocking its dependents), or max_iterations is hit as a safety cap.
+        """
+        plan = self._execution_plans.get(plan_id)
+        if not plan:
+            raise ValueError(f"Execution plan {plan_id} not found")
+
+        workers_by_type: Dict[str, List[Any]] = {}
+        for worker in workers:
+            workers_by_type.setdefault(worker.worker_type, []).append(worker)
+
+        plan.status = "running"
+        plan.started_at = plan.started_at or datetime.utcnow()
+
+        for _ in range(max_iterations):
+            if plan.completed_tasks + plan.failed_tasks >= plan.total_tasks:
+                break
+
+            made_progress = False
+            for worker_type, worker_list in workers_by_type.items():
+                task = await self.get_next_ready_task(worker_type)
+                if task:
+                    await worker_list[0]._process_task(task)
+                    made_progress = True
+
+            if not made_progress:
+                # Nothing ready across any known worker type: either done, or
+                # stuck (unmet dependency, missing worker type, permanent failure).
+                break
+
+        if plan.completed_tasks == plan.total_tasks:
+            plan.status = "completed"
+            plan.completed_at = datetime.utcnow()
+        elif plan.status != "completed":
+            plan.status = "incomplete"
+
+        return plan
     
     async def get_project_progress(self, project_id: str) -> Dict[str, Any]:
         """Get progress summary for a project."""

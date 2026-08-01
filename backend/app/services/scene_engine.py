@@ -42,15 +42,16 @@ class SceneService:
             environment_id=environment_id,
             estimated_duration_sec=duration_sec,
         )
-        
+        self.db.add(scene)
+        self.db.flush()  # assign scene.id before it's referenced by the camera plan FK
+
         # Auto-generate camera plan
         camera_plan = CameraPlan(scene_id=scene.id)
         self.db.add(camera_plan)
-        
-        self.db.add(scene)
+
         self.db.commit()
         self.db.refresh(scene)
-        
+
         return scene
     
     def get_scene(self, scene_id: int) -> Optional[Scene]:

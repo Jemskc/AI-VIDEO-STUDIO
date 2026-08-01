@@ -135,58 +135,6 @@ class CharacterResponse(BaseModel):
         from_attributes = True
 
 
-# Scene Schemas
-class SceneCreate(BaseModel):
-    scene_number: int
-    title: str
-    prompt: Optional[str] = None
-    duration: Optional[int] = None
-    environment: Optional[str] = None
-    camera_settings: Optional[Dict[str, Any]] = None
-    dialogue: Optional[str] = None
-    lighting: Optional[str] = None
-    weather: Optional[str] = None
-    characters: Optional[List[int]] = None
-
-
-class SceneUpdate(BaseModel):
-    scene_number: Optional[int] = None
-    title: Optional[str] = None
-    prompt: Optional[str] = None
-    duration: Optional[int] = None
-    environment: Optional[str] = None
-    camera_settings: Optional[Dict[str, Any]] = None
-    dialogue: Optional[str] = None
-    lighting: Optional[str] = None
-    weather: Optional[str] = None
-    characters: Optional[List[int]] = None
-    status: Optional[str] = None
-    order_index: Optional[int] = None
-
-
-class SceneResponse(BaseModel):
-    id: int
-    project_id: int
-    scene_number: int
-    title: str
-    prompt: Optional[str]
-    duration: Optional[int]
-    environment: Optional[str]
-    camera_settings: Optional[Dict[str, Any]]
-    dialogue: Optional[str]
-    lighting: Optional[str]
-    weather: Optional[str]
-    characters: Optional[List[int]]
-    status: str
-    order_index: int
-    thumbnail_url: Optional[str]
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
 # Storyboard Schemas
 class StoryboardCreate(BaseModel):
     title: str

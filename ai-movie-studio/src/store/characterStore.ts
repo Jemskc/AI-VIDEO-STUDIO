@@ -20,44 +20,8 @@ interface CharacterState {
   deleteCharacter: (id: string) => void;
 }
 
-const mockCharacters: Character[] = [
-  {
-    id: '1',
-    name: 'Alex Chen',
-    role: 'Protagonist',
-    description: 'A brilliant AI researcher discovering the truth',
-    avatar: '/avatars/alex.jpg',
-    voice: 'calm-female',
-    outfit: 'Lab coat, smart casual',
-    personality: 'Curious, determined, empathetic',
-    consistencyStatus: 'consistent',
-  },
-  {
-    id: '2',
-    name: 'Marcus Steel',
-    role: 'Antagonist',
-    description: 'Corporate executive with hidden agenda',
-    avatar: '/avatars/marcus.jpg',
-    voice: 'deep-male',
-    outfit: 'Business suit, luxury accessories',
-    personality: 'Ambitious, calculating, charismatic',
-    consistencyStatus: 'consistent',
-  },
-  {
-    id: '3',
-    name: 'Luna',
-    role: 'AI Companion',
-    description: 'Advanced AI assistant with evolving consciousness',
-    avatar: '/avatars/luna.jpg',
-    voice: 'soft-female',
-    outfit: 'Holographic projection, ethereal',
-    personality: 'Logical yet emotional, loyal, wise',
-    consistencyStatus: 'needs-review',
-  },
-];
-
 export const useCharacterStore = create<CharacterState>((set) => ({
-  characters: mockCharacters,
+  characters: [],
   setCharacters: (characters) => set({ characters }),
   addCharacter: (character) =>
     set((state) => ({ characters: [...state.characters, character] })),

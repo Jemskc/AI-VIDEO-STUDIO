@@ -19,7 +19,7 @@ from app.services.movie_planning import MoviePlanningService
 from app.services.scene_engine import SceneService
 from app.services.validation_engine import ValidationService
 from app.auth.dependencies import get_current_user
-from app.models.user import User
+from app.models.user import CurrentUser
 
 router = APIRouter(prefix="/api/v1/intelligence", tags=["Intelligence"])
 
@@ -30,7 +30,7 @@ router = APIRouter(prefix="/api/v1/intelligence", tags=["Intelligence"])
 def create_story_from_prompt(
     story_data: StoryCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
 ):
     """
     Create a new story from a prompt.
@@ -43,6 +43,7 @@ def create_story_from_prompt(
         project_id=story_data.project_id,
         prompt=story_data.synopsis or story_data.logline or "",
         title=story_data.title,
+        target_duration_minutes=story_data.estimated_duration_minutes,
     )
     
     return story

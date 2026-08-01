@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.database.models import Asset, AssetType, get_db
 from app.database.schemas import AssetCreate, AssetResponse
+from app.auth.dependencies import get_current_user_id
 from datetime import datetime
 import os
 import uuid
@@ -16,7 +17,7 @@ async def upload_asset(
     file: UploadFile = File(...),
     asset_type: str = Form(...),
     db: Session = Depends(get_db),
-    user_id: int = 1
+    user_id: int = Depends(get_current_user_id)
 ):
     """Upload a new asset."""
     # Validate asset type
@@ -87,7 +88,7 @@ def get_assets(
     limit: int = 100,
     search: Optional[str] = None,
     db: Session = Depends(get_db),
-    user_id: int = 1
+    user_id: int = Depends(get_current_user_id)
 ):
     """Get all assets for the current user."""
     query = db.query(Asset).filter(Asset.user_id == user_id)
@@ -110,7 +111,7 @@ def get_assets(
 
 
 @router.get("/{asset_id}", response_model=AssetResponse)
-def get_asset(asset_id: int, db: Session = Depends(get_db), user_id: int = 1):
+def get_asset(asset_id: int, db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Get a specific asset by ID."""
     asset = db.query(Asset).filter(
         Asset.id == asset_id,
@@ -127,7 +128,7 @@ def get_asset(asset_id: int, db: Session = Depends(get_db), user_id: int = 1):
 
 
 @router.delete("/{asset_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_asset(asset_id: int, db: Session = Depends(get_db), user_id: int = 1):
+def delete_asset(asset_id: int, db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Delete an asset."""
     asset = db.query(Asset).filter(
         Asset.id == asset_id,
@@ -151,7 +152,7 @@ def delete_asset(asset_id: int, db: Session = Depends(get_db), user_id: int = 1)
 
 
 @router.get("/{asset_id}/download")
-async def download_asset(asset_id: int, db: Session = Depends(get_db), user_id: int = 1):
+async def download_asset(asset_id: int, db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Download an asset file."""
     from fastapi.responses import FileResponse
     

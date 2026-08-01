@@ -1,12 +1,14 @@
+from pathlib import Path
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
 from app.database.models import Base, engine
 from app.api.v1.auth.router import router as auth_router
 from app.api.v1.projects.router import router as projects_router
 from app.api.v1.characters.router import router as characters_router
-from app.api.v1.scenes.router import router as scenes_router
 from app.api.v1.assets.router import router as assets_router
 from app.api.v1.render.router import router as render_router
 from app.api.v1.models.router import router as models_router
@@ -14,6 +16,8 @@ from app.api.v1.notifications.router import router as notifications_router
 from app.api.v1.settings.router import router as settings_router
 from app.api.v1.storyboards.router import router as storyboards_router
 from app.api.intelligence import router as intelligence_router
+from app.api.ai_infrastructure import router as ai_infrastructure_router
+from app.websocket.manager import router as websocket_router
 import logging
 
 # Configure logging
@@ -43,6 +47,13 @@ app.add_middleware(
 )
 
 
+# Serve generated/rendered files (storage/generated, storage/renders, storage/uploads)
+# so the frontend can load/download them directly by the relative path the API returns.
+storage_root = Path(settings.STORAGE_PATH).parent
+storage_root.mkdir(parents=True, exist_ok=True)
+app.mount("/storage", StaticFiles(directory=str(storage_root)), name="storage")
+
+
 # Exception handlers
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -61,7 +72,6 @@ Base.metadata.create_all(bind=engine)
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
 app.include_router(projects_router, prefix=settings.API_V1_PREFIX)
 app.include_router(characters_router, prefix=settings.API_V1_PREFIX)
-app.include_router(scenes_router, prefix=settings.API_V1_PREFIX)
 app.include_router(storyboards_router, prefix=settings.API_V1_PREFIX)
 app.include_router(assets_router, prefix=settings.API_V1_PREFIX)
 app.include_router(render_router, prefix=settings.API_V1_PREFIX)
@@ -69,6 +79,8 @@ app.include_router(models_router, prefix=settings.API_V1_PREFIX)
 app.include_router(notifications_router, prefix=settings.API_V1_PREFIX)
 app.include_router(settings_router, prefix=settings.API_V1_PREFIX)
 app.include_router(intelligence_router)  # Intelligence router has its own prefix
+app.include_router(ai_infrastructure_router)  # AI infrastructure router has its own prefix
+app.include_router(websocket_router)  # /ws, /ws/jobs
 
 
 @app.get("/")

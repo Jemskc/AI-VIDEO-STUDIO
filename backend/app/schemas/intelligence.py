@@ -77,7 +77,7 @@ class StoryBase(BaseSchema):
     structure_type: StoryStructureEnum = StoryStructureEnum.THREE_ACT
     theme: Optional[str] = None
     moral_premise: Optional[str] = None
-    estimated_duration_minutes: float = 5.0
+    estimated_duration_minutes: float = 15.0  # default target movie length; caller may override
 
 class StoryCreate(StoryBase):
     project_id: int

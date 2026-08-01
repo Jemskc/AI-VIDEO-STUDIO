@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE: int = 104857600  # 100MB
 
     # CORS
-    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:3001"
+    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:3001,http://localhost:5173"
 
     # Worker Settings
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"

@@ -7,6 +7,8 @@ Replace the mock implementation with actual FLUX model integration.
 
 import asyncio
 import logging
+import uuid
+from pathlib import Path
 from typing import Any, Dict, List, Optional, AsyncIterator
 from datetime import datetime
 
@@ -16,8 +18,11 @@ from app.providers.base import (
     GenerationResponse,
     ProgressUpdate
 )
+from app.storage.local import get_storage_backend
 
 logger = logging.getLogger(__name__)
+
+PLACEHOLDER_IMAGE = Path(__file__).resolve().parent.parent / "storage" / "placeholders" / "placeholder_image.png"
 
 
 class FluxImageProvider(ImageProvider):
@@ -106,8 +111,12 @@ class FluxImageProvider(ImageProvider):
             # Save image and get path
             # image_path = self._save_image(image, request.task_id)
             
-            # Mock result
-            image_path = f"/storage/generated/{request.task_id}.png"
+            # Mock result: write a real placeholder file so downstream steps
+            # (FFmpeg render) have an actual file to work with.
+            storage = get_storage_backend()
+            image_path = storage.save_file(
+                f"generated/{uuid.uuid4().hex}.png", str(PLACEHOLDER_IMAGE)
+            )
             
             processing_time = (datetime.utcnow() - start_time).total_seconds()
             

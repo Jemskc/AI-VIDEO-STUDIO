@@ -24,83 +24,110 @@ celery_app.conf.update(
 @celery_app.task(bind=True, max_retries=3)
 def process_render_job(self, job_id: int):
     """
-    Process a render job (mock implementation).
-    
-    This task simulates the render pipeline without actual AI generation.
-    In future phases, this will be extended to call real AI models.
+    Process a render job: build the production blueprint for the job's story,
+    adapt it into an orchestrator execution plan, run mock workers/providers
+    to completion, and stitch the resulting scene clips into a final video.
+
+    Providers are mocked (placeholder outputs) for now; the orchestration,
+    worker, and FFmpeg wiring here is real and unchanged when real AI
+    providers are swapped in later.
     """
-    from sqlalchemy.orm import Session
-    from app.database.models import RenderJob, JobStatus, get_db
+    import asyncio
     from datetime import datetime
-    
+    from app.database.models import RenderJob, JobStatus, get_db
+    from app.services.movie_planning import MoviePlanningService
+    from app.services.blueprint_adapter import to_orchestrator_blueprint
+    from app.orchestrator.engine import get_orchestrator, TaskType
+    from app.workers.base import (
+        LLMWorker, ImageWorker, VideoWorker, VoiceWorker, MusicWorker, RenderWorker,
+    )
+
     db = next(get_db())
-    
+    job = None
+
     try:
         job = db.query(RenderJob).filter(RenderJob.id == job_id).first()
-        
         if not job:
             raise ValueError(f"Render job {job_id} not found")
-        
-        # Update status to preparing
+
+        story_id = (job.parameters or {}).get("story_id")
+        if not story_id:
+            raise ValueError("Render job parameters must include 'story_id'")
+
         job.status = JobStatus.PREPARING
-        job.progress = 10
+        job.progress = 5
         job.started_at = datetime.utcnow()
         db.commit()
-        
-        # Simulate preparation phase
-        self.update_state(state="PREPARING", meta={"progress": 25})
-        job.progress = 25
-        db.commit()
-        
-        # Simulate story generation phase
+
+        planner = MoviePlanningService(db)
+        blueprint = planner.get_production_blueprint(story_id)
+        adapted = to_orchestrator_blueprint(blueprint)
+
         job.status = JobStatus.GENERATING_STORY
-        self.update_state(state="GENERATING_STORY", meta={"progress": 40})
+        job.progress = 15
+        db.commit()
+
+        async def run_pipeline():
+            orchestrator = get_orchestrator()
+            plan = await orchestrator.create_execution_plan(
+                project_id=adapted["project_id"],
+                blueprint_id=str(adapted["id"]),
+                blueprint_data=adapted,
+            )
+
+            workers = [
+                LLMWorker(), ImageWorker(), VideoWorker(),
+                VoiceWorker(), MusicWorker(), RenderWorker(),
+            ]
+            for worker in workers:
+                await worker.initialize()
+
+            return await orchestrator.run_plan_to_completion(plan.plan_id, workers)
+
+        job.status = JobStatus.WAITING_FOR_AI
         job.progress = 40
         db.commit()
-        
-        # Simulate scene preparation
-        job.status = JobStatus.PREPARING_SCENES
-        self.update_state(state="PREPARING_SCENES", meta={"progress": 60})
-        job.progress = 60
-        db.commit()
-        
-        # Simulate AI waiting (placeholder)
-        job.status = JobStatus.WAITING_FOR_AI
-        self.update_state(state="WAITING_FOR_AI", meta={"progress": 75})
-        job.progress = 75
-        db.commit()
-        
-        # Simulate finalizing
+
+        completed_plan = asyncio.run(run_pipeline())
+
         job.status = JobStatus.FINALIZING
-        self.update_state(state="FINALIZING", meta={"progress": 90})
         job.progress = 90
         db.commit()
-        
-        # Complete the job
+
+        if completed_plan.status != "completed":
+            raise RuntimeError(
+                f"Render plan did not complete: {completed_plan.completed_tasks}/"
+                f"{completed_plan.total_tasks} tasks done, {completed_plan.failed_tasks} failed"
+            )
+
+        render_task = next(
+            (t for t in completed_plan.tasks if t.task_type == TaskType.RENDER), None
+        )
+        if not render_task or not render_task.result:
+            raise RuntimeError("Render task did not produce an output")
+
         job.status = JobStatus.COMPLETED
         job.progress = 100
         job.completed_at = datetime.utcnow()
-        job.output_url = "/mock/output/path.mp4"  # Placeholder
+        job.output_url = render_task.result["output_path"]
         db.commit()
-        
+
         return {
             "job_id": job_id,
             "status": "completed",
             "output_url": job.output_url
         }
-        
+
     except Exception as exc:
-        # Handle failure
-        if db:
+        if job:
             job.status = JobStatus.FAILED
             job.error_message = str(exc)
             job.completed_at = datetime.utcnow()
             db.commit()
-        
-        # Retry logic
+
         retry_delay = 60 * (self.request.retries + 1)
         raise self.retry(exc=exc, countdown=retry_delay)
-    
+
     finally:
         db.close()
 

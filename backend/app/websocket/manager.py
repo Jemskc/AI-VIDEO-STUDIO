@@ -1,9 +1,27 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from typing import Dict, List
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
+from typing import Dict, List, Optional
 import json
 import asyncio
 
+from app.core.security import decode_token
+
 router = APIRouter()
+
+
+async def _authenticate(websocket: WebSocket, token: Optional[str]) -> Optional[int]:
+    """
+    Resolve the user id from a JWT passed as a query param, since browsers
+    can't set an Authorization header on the WebSocket upgrade request.
+    Closes the connection and returns None if the token is missing/invalid.
+    """
+    payload = decode_token(token) if token else None
+    user_id = payload.get("sub") if payload else None
+
+    if not user_id:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return None
+
+    return int(user_id)
 
 
 class ConnectionManager:
@@ -52,8 +70,12 @@ manager = ConnectionManager()
 
 
 @router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket, user_id: int = 1):
-    """WebSocket endpoint for real-time updates."""
+async def websocket_endpoint(websocket: WebSocket, token: Optional[str] = None):
+    """WebSocket endpoint for real-time updates. Requires ?token=<JWT>."""
+    user_id = await _authenticate(websocket, token)
+    if user_id is None:
+        return
+
     await manager.connect(websocket, user_id)
     
     try:
@@ -96,8 +118,12 @@ async def websocket_endpoint(websocket: WebSocket, user_id: int = 1):
 
 
 @router.websocket("/ws/jobs")
-async def jobs_websocket_endpoint(websocket: WebSocket, user_id: int = 1):
-    """WebSocket endpoint specifically for render job updates."""
+async def jobs_websocket_endpoint(websocket: WebSocket, token: Optional[str] = None):
+    """WebSocket endpoint specifically for render job updates. Requires ?token=<JWT>."""
+    user_id = await _authenticate(websocket, token)
+    if user_id is None:
+        return
+
     await manager.connect(websocket, user_id)
     
     try:

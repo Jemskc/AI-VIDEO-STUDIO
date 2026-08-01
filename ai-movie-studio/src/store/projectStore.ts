@@ -21,41 +21,8 @@ interface ProjectState {
   deleteProject: (id: string) => void;
 }
 
-const mockProjects: Project[] = [
-  {
-    id: '1',
-    name: 'Cyberpunk Short Film',
-    description: 'A futuristic tale of AI and humanity',
-    thumbnail: '/thumbnails/cyberpunk.jpg',
-    status: 'rendering',
-    progress: 67,
-    createdAt: '2024-01-15',
-    updatedAt: '2024-01-20',
-  },
-  {
-    id: '2',
-    name: 'Nature Documentary',
-    description: 'Exploring the wonders of wildlife',
-    thumbnail: '/thumbnails/nature.jpg',
-    status: 'completed',
-    progress: 100,
-    createdAt: '2024-01-10',
-    updatedAt: '2024-01-18',
-  },
-  {
-    id: '3',
-    name: 'Product Commercial',
-    description: '30-second advertisement for tech product',
-    thumbnail: '/thumbnails/commercial.jpg',
-    status: 'draft',
-    progress: 25,
-    createdAt: '2024-01-20',
-    updatedAt: '2024-01-21',
-  },
-];
-
 export const useProjectStore = create<ProjectState>((set) => ({
-  projects: mockProjects,
+  projects: [],
   activeProject: null,
   setProjects: (projects) => set({ projects }),
   setActiveProject: (project) => set({ activeProject: project }),

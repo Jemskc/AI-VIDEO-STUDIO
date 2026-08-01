@@ -2,13 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database.models import UserSetting, get_db
 from app.database.schemas import UserSettingUpdate, UserSettingResponse
+from app.auth.dependencies import get_current_user_id
 from datetime import datetime
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
 
 
 @router.get("/", response_model=UserSettingResponse)
-def get_user_settings(db: Session = Depends(get_db), user_id: int = 1):
+def get_user_settings(db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Get current user's settings."""
     settings = db.query(UserSetting).filter(UserSetting.user_id == user_id).first()
     
@@ -26,7 +27,7 @@ def get_user_settings(db: Session = Depends(get_db), user_id: int = 1):
 def update_user_settings(
     settings_data: UserSettingUpdate,
     db: Session = Depends(get_db),
-    user_id: int = 1
+    user_id: int = Depends(get_current_user_id)
 ):
     """Update user settings."""
     settings = db.query(UserSetting).filter(UserSetting.user_id == user_id).first()
@@ -48,7 +49,7 @@ def update_user_settings(
 
 
 @router.get("/keyboard-shortcuts")
-def get_keyboard_shortcuts(db: Session = Depends(get_db), user_id: int = 1):
+def get_keyboard_shortcuts(db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Get keyboard shortcuts configuration."""
     settings = db.query(UserSetting).filter(UserSetting.user_id == user_id).first()
     
@@ -59,7 +60,7 @@ def get_keyboard_shortcuts(db: Session = Depends(get_db), user_id: int = 1):
 
 
 @router.put("/keyboard-shortcuts")
-def update_keyboard_shortcuts(shortcuts: dict, db: Session = Depends(get_db), user_id: int = 1):
+def update_keyboard_shortcuts(shortcuts: dict, db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Update keyboard shortcuts configuration."""
     settings = db.query(UserSetting).filter(UserSetting.user_id == user_id).first()
     

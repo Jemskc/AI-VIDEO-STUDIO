@@ -4,6 +4,7 @@ from app.database.models import User, UserRole
 from app.database.schemas import UserCreate, UserLogin, Token, UserResponse
 from app.core.security import get_password_hash, verify_password, create_access_token, create_refresh_token
 from app.database.models import get_db
+from app.auth.dependencies import get_current_user_id
 from datetime import timedelta
 from app.core.config import settings
 
@@ -119,12 +120,11 @@ def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
 
 @router.get("/me", response_model=UserResponse)
 def get_current_user_info(
-    current_user: dict = Depends(lambda: {"user_id": 1, "role": "user"}),  # Placeholder dependency
+    user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db)
 ):
     """Get current user information."""
-    # This will be updated with proper JWT authentication
-    user = db.query(User).filter(User.id == int(current_user["user_id"])).first()
+    user = db.query(User).filter(User.id == user_id).first()
     
     if not user:
         raise HTTPException(

@@ -3,13 +3,14 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.database.models import Project, get_db
 from app.database.schemas import ProjectCreate, ProjectUpdate, ProjectResponse
+from app.auth.dependencies import get_current_user_id
 from datetime import datetime
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
 
 @router.post("/", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
-def create_project(project_data: ProjectCreate, db: Session = Depends(get_db), user_id: int = 1):
+def create_project(project_data: ProjectCreate, db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Create a new project."""
     new_project = Project(
         user_id=user_id,
@@ -33,7 +34,7 @@ def get_projects(
     favorite_only: bool = False,
     search: Optional[str] = None,
     db: Session = Depends(get_db),
-    user_id: int = 1
+    user_id: int = Depends(get_current_user_id)
 ):
     """Get all projects with filtering and pagination."""
     query = db.query(Project).filter(Project.user_id == user_id, Project.deleted_at.is_(None))
@@ -55,7 +56,7 @@ def get_projects(
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
-def get_project(project_id: int, db: Session = Depends(get_db), user_id: int = 1):
+def get_project(project_id: int, db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Get a specific project by ID."""
     project = db.query(Project).filter(
         Project.id == project_id,
@@ -77,7 +78,7 @@ def update_project(
     project_id: int,
     project_data: ProjectUpdate,
     db: Session = Depends(get_db),
-    user_id: int = 1
+    user_id: int = Depends(get_current_user_id)
 ):
     """Update a project."""
     project = db.query(Project).filter(
@@ -105,7 +106,7 @@ def update_project(
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_project(project_id: int, db: Session = Depends(get_db), user_id: int = 1):
+def delete_project(project_id: int, db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Soft delete a project."""
     project = db.query(Project).filter(
         Project.id == project_id,
@@ -127,7 +128,7 @@ def delete_project(project_id: int, db: Session = Depends(get_db), user_id: int 
 
 
 @router.post("/{project_id}/archive", response_model=ProjectResponse)
-def archive_project(project_id: int, db: Session = Depends(get_db), user_id: int = 1):
+def archive_project(project_id: int, db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Archive a project."""
     project = db.query(Project).filter(
         Project.id == project_id,
@@ -150,7 +151,7 @@ def archive_project(project_id: int, db: Session = Depends(get_db), user_id: int
 
 
 @router.post("/{project_id}/duplicate", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
-def duplicate_project(project_id: int, db: Session = Depends(get_db), user_id: int = 1):
+def duplicate_project(project_id: int, db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Duplicate a project."""
     original = db.query(Project).filter(
         Project.id == project_id,
@@ -180,7 +181,7 @@ def duplicate_project(project_id: int, db: Session = Depends(get_db), user_id: i
 
 
 @router.post("/{project_id}/favorite", response_model=ProjectResponse)
-def toggle_favorite(project_id: int, db: Session = Depends(get_db), user_id: int = 1):
+def toggle_favorite(project_id: int, db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Toggle project favorite status."""
     project = db.query(Project).filter(
         Project.id == project_id,

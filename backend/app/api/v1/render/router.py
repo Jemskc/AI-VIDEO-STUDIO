@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.database.models import RenderJob, JobStatus, get_db
 from app.database.schemas import RenderJobCreate, RenderJobUpdate, RenderJobResponse
+from app.auth.dependencies import get_current_user_id
 from datetime import datetime
 import random
 
@@ -10,7 +11,7 @@ router = APIRouter(prefix="/render", tags=["Render Jobs"])
 
 
 @router.post("/jobs", response_model=RenderJobResponse, status_code=status.HTTP_201_CREATED)
-def create_render_job(job_data: RenderJobCreate, db: Session = Depends(get_db), user_id: int = 1):
+def create_render_job(job_data: RenderJobCreate, db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Create a new render job."""
     new_job = RenderJob(
         user_id=user_id,
@@ -25,10 +26,10 @@ def create_render_job(job_data: RenderJobCreate, db: Session = Depends(get_db), 
     db.add(new_job)
     db.commit()
     db.refresh(new_job)
-    
-    # In production, this would push to Redis/Celery
-    # For now, we simulate the job being queued
-    
+
+    from app.workers.celery_app import process_render_job
+    process_render_job.delay(new_job.id)
+
     return new_job
 
 
@@ -38,7 +39,7 @@ def get_render_jobs(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    user_id: int = 1
+    user_id: int = Depends(get_current_user_id)
 ):
     """Get all render jobs for the current user."""
     query = db.query(RenderJob).filter(RenderJob.user_id == user_id)
@@ -55,7 +56,7 @@ def get_render_jobs(
 
 
 @router.get("/jobs/{job_id}", response_model=RenderJobResponse)
-def get_render_job(job_id: int, db: Session = Depends(get_db), user_id: int = 1):
+def get_render_job(job_id: int, db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Get a specific render job by ID."""
     job = db.query(RenderJob).filter(
         RenderJob.id == job_id,
@@ -76,7 +77,7 @@ def update_render_job(
     job_id: int,
     job_data: RenderJobUpdate,
     db: Session = Depends(get_db),
-    user_id: int = 1
+    user_id: int = Depends(get_current_user_id)
 ):
     """Update a render job (primarily for internal use)."""
     job = db.query(RenderJob).filter(
@@ -109,7 +110,7 @@ def update_render_job(
 
 
 @router.post("/jobs/{job_id}/cancel", response_model=RenderJobResponse)
-def cancel_render_job(job_id: int, db: Session = Depends(get_db), user_id: int = 1):
+def cancel_render_job(job_id: int, db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Cancel a running render job."""
     job = db.query(RenderJob).filter(
         RenderJob.id == job_id,
@@ -138,7 +139,7 @@ def cancel_render_job(job_id: int, db: Session = Depends(get_db), user_id: int =
 
 
 @router.post("/jobs/{job_id}/pause", response_model=RenderJobResponse)
-def pause_render_job(job_id: int, db: Session = Depends(get_db), user_id: int = 1):
+def pause_render_job(job_id: int, db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Pause a running render job (placeholder)."""
     job = db.query(RenderJob).filter(
         RenderJob.id == job_id,
@@ -167,7 +168,7 @@ def pause_render_job(job_id: int, db: Session = Depends(get_db), user_id: int = 
 
 
 @router.post("/jobs/{job_id}/resume", response_model=RenderJobResponse)
-def resume_render_job(job_id: int, db: Session = Depends(get_db), user_id: int = 1):
+def resume_render_job(job_id: int, db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Resume a paused render job (placeholder)."""
     job = db.query(RenderJob).filter(
         RenderJob.id == job_id,
@@ -196,7 +197,7 @@ def resume_render_job(job_id: int, db: Session = Depends(get_db), user_id: int =
 
 
 @router.delete("/jobs/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_render_job(job_id: int, db: Session = Depends(get_db), user_id: int = 1):
+def delete_render_job(job_id: int, db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Delete a render job."""
     job = db.query(RenderJob).filter(
         RenderJob.id == job_id,

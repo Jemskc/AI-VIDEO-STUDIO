@@ -3,13 +3,14 @@ from sqlalchemy.orm import Session
 from typing import List
 from app.database.models import Character, get_db
 from app.database.schemas import CharacterCreate, CharacterUpdate, CharacterResponse
+from app.auth.dependencies import get_current_user_id
 from datetime import datetime
 
 router = APIRouter(prefix="/characters", tags=["Characters"])
 
 
 @router.post("/", response_model=CharacterResponse, status_code=status.HTTP_201_CREATED)
-def create_character(character_data: CharacterCreate, db: Session = Depends(get_db), user_id: int = 1):
+def create_character(character_data: CharacterCreate, db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Create a new character."""
     new_character = Character(
         user_id=user_id,
@@ -24,7 +25,7 @@ def create_character(character_data: CharacterCreate, db: Session = Depends(get_
 
 
 @router.get("/", response_model=List[CharacterResponse])
-def get_characters(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), user_id: int = 1):
+def get_characters(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Get all characters for the current user."""
     characters = db.query(Character).filter(
         Character.user_id == user_id
@@ -34,7 +35,7 @@ def get_characters(skip: int = 0, limit: int = 100, db: Session = Depends(get_db
 
 
 @router.get("/{character_id}", response_model=CharacterResponse)
-def get_character(character_id: int, db: Session = Depends(get_db), user_id: int = 1):
+def get_character(character_id: int, db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Get a specific character by ID."""
     character = db.query(Character).filter(
         Character.id == character_id,
@@ -55,7 +56,7 @@ def update_character(
     character_id: int,
     character_data: CharacterUpdate,
     db: Session = Depends(get_db),
-    user_id: int = 1
+    user_id: int = Depends(get_current_user_id)
 ):
     """Update a character."""
     character = db.query(Character).filter(
@@ -81,7 +82,7 @@ def update_character(
 
 
 @router.delete("/{character_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_character(character_id: int, db: Session = Depends(get_db), user_id: int = 1):
+def delete_character(character_id: int, db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     """Delete a character."""
     character = db.query(Character).filter(
         Character.id == character_id,

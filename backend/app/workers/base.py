@@ -165,33 +165,34 @@ class LLMWorker(BaseWorker):
     
     async def initialize(self) -> bool:
         """Initialize LLM provider."""
-        # In production, load actual LLM provider plugin
-        # from app.plugins.llm_qwen import QwenProvider
-        # self.provider = QwenProvider()
-        # await self.provider.initialize("qwen-72b")
-        logger.info(f"LLM Worker {self.worker_id} initialized (provider pending)")
+        from app.plugins.llm_story import StoryLLMProvider
+
+        self.provider = StoryLLMProvider()
+        await self.provider.initialize("mock-story")
+        logger.info(f"LLM Worker {self.worker_id} initialized")
         return True
-    
+
     async def execute_task(self, task: Task) -> Dict[str, Any]:
         """Execute an LLM task."""
         if task.task_type == TaskType.GENERATE_STORY:
             return await self._generate_story(task)
         else:
             raise ValueError(f"Unknown LLM task type: {task.task_type}")
-    
+
     async def _generate_story(self, task: Task) -> Dict[str, Any]:
         """Generate or refine story content."""
         story_data = task.payload.get("story", {})
-        
-        # TODO: Call LLM provider when implemented
-        # result = await self.provider.generate_text(
-        #     prompt=story_data.get("prompt", ""),
-        #     system_prompt="You are a professional screenwriter..."
-        # )
-        
+
+        response = await self.provider.generate(
+            GenerationRequest(task_id=task.task_id, prompt=story_data.get("prompt", ""))
+        )
+        if response.status != "completed":
+            raise RuntimeError(f"Story generation failed: {response.error_message}")
+
         return {
             "status": "completed",
             "story": story_data,
+            "text": response.metadata.get("text"),
             "generated_at": datetime.utcnow().isoformat()
         }
 
@@ -213,39 +214,36 @@ class ImageWorker(BaseWorker):
         
         if reservation:
             logger.info(f"GPU reserved for image worker {self.worker_id}")
-        
-        # In production, load actual image provider plugin
-        # from app.plugins.image_flux import FluxProvider
-        # self.provider = FluxProvider()
-        # await self.provider.initialize("flux-dev")
-        
-        logger.info(f"Image Worker {self.worker_id} initialized (provider pending)")
+
+        from app.plugins.image_flux import FluxImageProvider
+
+        self.provider = FluxImageProvider()
+        await self.provider.initialize("flux-dev")
+        logger.info(f"Image Worker {self.worker_id} initialized")
         return True
-    
+
     async def execute_task(self, task: Task) -> Dict[str, Any]:
         """Execute an image generation task."""
         if task.task_type in [TaskType.GENERATE_IMAGE, TaskType.GENERATE_CHARACTER]:
             return await self._generate_image(task)
         else:
             raise ValueError(f"Unknown image task type: {task.task_type}")
-    
+
     async def _generate_image(self, task: Task) -> Dict[str, Any]:
         """Generate an image from prompt."""
         prompt = task.payload.get("prompt", "")
         width = task.payload.get("width", 1024)
         height = task.payload.get("height", 1024)
-        
-        # TODO: Call image provider when implemented
-        # image_path = await self.provider.generate_image(
-        #     prompt=prompt,
-        #     width=width,
-        #     height=height
-        # )
-        
-        # Mock result for now
+
+        response = await self.provider.generate(
+            GenerationRequest(task_id=task.task_id, prompt=prompt, width=width, height=height)
+        )
+        if response.status != "completed":
+            raise RuntimeError(f"Image generation failed: {response.error_message}")
+
         return {
             "status": "completed",
-            "image_path": f"/storage/generated/{task.task_id}.png",
+            "image_path": response.result_url,
             "width": width,
             "height": height,
             "prompt": prompt,
@@ -270,22 +268,21 @@ class VideoWorker(BaseWorker):
         
         if reservation:
             logger.info(f"GPU reserved for video worker {self.worker_id}")
-        
-        # In production, load actual video provider plugin
-        # from app.plugins.video_wan import WanProvider
-        # self.provider = WanProvider()
-        # await self.provider.initialize("wan-2.1")
-        
-        logger.info(f"Video Worker {self.worker_id} initialized (provider pending)")
+
+        from app.plugins.video_mock import MockVideoProvider
+
+        self.provider = MockVideoProvider()
+        await self.provider.initialize("mock-video")
+        logger.info(f"Video Worker {self.worker_id} initialized")
         return True
-    
+
     async def execute_task(self, task: Task) -> Dict[str, Any]:
         """Execute a video generation task."""
         if task.task_type == TaskType.GENERATE_VIDEO:
             return await self._generate_video(task)
         else:
             raise ValueError(f"Unknown video task type: {task.task_type}")
-    
+
     async def _generate_video(self, task: Task) -> Dict[str, Any]:
         """Generate a video from prompt."""
         prompt = task.payload.get("prompt", "")
@@ -293,19 +290,19 @@ class VideoWorker(BaseWorker):
         fps = task.payload.get("fps", 24)
         width = task.payload.get("width", 1280)
         height = task.payload.get("height", 720)
-        
-        # TODO: Call video provider when implemented
-        # video_path = await self.provider.generate_video(
-        #     prompt=prompt,
-        #     duration=duration,
-        #     fps=fps,
-        #     width=width,
-        #     height=height
-        # )
-        
+
+        response = await self.provider.generate(
+            GenerationRequest(
+                task_id=task.task_id, prompt=prompt, duration=duration, fps=fps,
+                width=width, height=height,
+            )
+        )
+        if response.status != "completed":
+            raise RuntimeError(f"Video generation failed: {response.error_message}")
+
         return {
             "status": "completed",
-            "video_path": f"/storage/generated/{task.task_id}.mp4",
+            "video_path": response.result_url,
             "duration": duration,
             "fps": fps,
             "resolution": f"{width}x{height}",
@@ -330,31 +327,33 @@ class VoiceWorker(BaseWorker):
         
         if reservation:
             logger.info(f"GPU reserved for voice worker {self.worker_id}")
-        
-        logger.info(f"Voice Worker {self.worker_id} initialized (provider pending)")
+
+        from app.plugins.voice_mock import MockVoiceProvider
+
+        self.provider = MockVoiceProvider()
+        await self.provider.initialize("mock-voice")
+        logger.info(f"Voice Worker {self.worker_id} initialized")
         return True
-    
+
     async def execute_task(self, task: Task) -> Dict[str, Any]:
         """Execute a voice generation task."""
         if task.task_type == TaskType.GENERATE_VOICE:
             return await self._generate_speech(task)
         else:
             raise ValueError(f"Unknown voice task type: {task.task_type}")
-    
+
     async def _generate_speech(self, task: Task) -> Dict[str, Any]:
         """Generate speech from text."""
         text = task.payload.get("text", "")
         voice_id = task.payload.get("voice_id", "default")
-        
-        # TODO: Call voice provider when implemented
-        # audio_path = await self.provider.generate_speech(
-        #     text=text,
-        #     voice_id=voice_id
-        # )
-        
+
+        response = await self.provider.generate(GenerationRequest(task_id=task.task_id, prompt=text))
+        if response.status != "completed":
+            raise RuntimeError(f"Speech generation failed: {response.error_message}")
+
         return {
             "status": "completed",
-            "audio_path": f"/storage/generated/{task.task_id}.wav",
+            "audio_path": response.result_url,
             "text": text,
             "voice_id": voice_id,
             "generated_at": datetime.utcnow().isoformat()
@@ -377,31 +376,35 @@ class MusicWorker(BaseWorker):
         
         if reservation:
             logger.info(f"GPU reserved for music worker {self.worker_id}")
-        
-        logger.info(f"Music Worker {self.worker_id} initialized (provider pending)")
+
+        from app.plugins.music_mock import MockMusicProvider
+
+        self.provider = MockMusicProvider()
+        await self.provider.initialize("mock-music")
+        logger.info(f"Music Worker {self.worker_id} initialized")
         return True
-    
+
     async def execute_task(self, task: Task) -> Dict[str, Any]:
         """Execute a music generation task."""
         if task.task_type == TaskType.GENERATE_MUSIC:
             return await self._generate_music(task)
         else:
             raise ValueError(f"Unknown music task type: {task.task_type}")
-    
+
     async def _generate_music(self, task: Task) -> Dict[str, Any]:
         """Generate music from prompt."""
         prompt = task.payload.get("audio_plan", {}).get("prompt", "")
         duration = task.payload.get("duration", 30.0)
-        
-        # TODO: Call music provider when implemented
-        # audio_path = await self.provider.generate_music(
-        #     prompt=prompt,
-        #     duration=duration
-        # )
-        
+
+        response = await self.provider.generate(
+            GenerationRequest(task_id=task.task_id, prompt=prompt, duration=duration)
+        )
+        if response.status != "completed":
+            raise RuntimeError(f"Music generation failed: {response.error_message}")
+
         return {
             "status": "completed",
-            "audio_path": f"/storage/generated/{task.task_id}.mp3",
+            "audio_path": response.result_url,
             "prompt": prompt,
             "duration": duration,
             "generated_at": datetime.utcnow().isoformat()
@@ -426,13 +429,32 @@ class RenderWorker(BaseWorker):
             raise ValueError(f"Unknown render task type: {task.task_type}")
     
     async def _render_movie(self, task: Task) -> Dict[str, Any]:
-        """Compose final movie from generated assets."""
-        # TODO: Implement FFmpeg rendering
-        # This will combine all scene videos, audio, music, subtitles
-        
+        """Compose final movie from generated scene video clips via FFmpeg."""
+        from app.engines.ffmpeg_renderer import render_final_video
+        from app.orchestrator.engine import get_orchestrator
+        from app.storage.local import get_storage_backend
+
+        orchestrator = get_orchestrator()
+
+        dep_tasks = []
+        for dep_task_id in task.dependencies:
+            dep_task = await orchestrator.get_task(dep_task_id)
+            if dep_task and dep_task.result:
+                dep_tasks.append(dep_task)
+        # Video tasks carry scene_id; order clips by scene so the output follows story order.
+        dep_tasks.sort(key=lambda t: t.scene_id if t.scene_id is not None else "")
+
+        video_paths = [t.result["video_path"] for t in dep_tasks]
+
+        storage = get_storage_backend()
+        output_path = storage.get_path(f"renders/{task.project_id}_{task.task_id}.mp4")
+
+        render_final_video(video_paths, str(output_path))
+
         return {
             "status": "completed",
-            "output_path": f"/storage/renders/{task.task_id}.mp4",
+            "output_path": str(output_path),
+            "scene_count": len(video_paths),
             "generated_at": datetime.utcnow().isoformat()
         }
 

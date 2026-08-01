@@ -75,7 +75,7 @@ class Project(Base):
     # Relationships
     user = relationship("User", back_populates="projects")
     movies = relationship("Movie", back_populates="project", cascade="all, delete-orphan")
-    scenes = relationship("Scene", back_populates="project", cascade="all, delete-orphan")
+    story = relationship("Story", back_populates="project", uselist=False, cascade="all, delete-orphan")
     storyboards = relationship("Storyboard", back_populates="project", cascade="all, delete-orphan")
 
 
@@ -118,31 +118,6 @@ class Character(Base):
 
     # Relationships
     user = relationship("User", back_populates="characters")
-
-
-class Scene(Base):
-    __tablename__ = "scenes_v1"
-
-    id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
-    scene_number = Column(Integer, nullable=False)
-    title = Column(String, nullable=False)
-    prompt = Column(Text)
-    duration = Column(Integer)  # in seconds
-    environment = Column(Text)
-    camera_settings = Column(JSON)
-    dialogue = Column(Text)
-    lighting = Column(String)
-    weather = Column(String)
-    characters = Column(JSON)  # List of character IDs
-    status = Column(String, default="draft")
-    order_index = Column(Integer, default=0)
-    thumbnail_url = Column(String)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # Relationships
-    project = relationship("Project", back_populates="scenes")
 
 
 class Storyboard(Base):

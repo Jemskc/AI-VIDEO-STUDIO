@@ -6,6 +6,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gcc \
     postgresql-client \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements
@@ -17,8 +18,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Create storage directory
-RUN mkdir -p /app/storage/uploads
+# Create storage directories
+RUN mkdir -p /app/storage/uploads /app/storage/generated /app/storage/renders
 
 # Expose port
 EXPOSE 8000

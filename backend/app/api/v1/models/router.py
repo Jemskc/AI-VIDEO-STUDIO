@@ -34,17 +34,24 @@ def get_ai_models(category: str = None, db: Session = Depends(get_db)):
     return models
 
 
+@router.get("/categories")
+def get_model_categories(db: Session = Depends(get_db)):
+    """Get all available model categories."""
+    categories = db.query(AIModel.category).distinct().all()
+    return {"categories": [c[0] for c in categories if c[0]]}
+
+
 @router.get("/{model_id}", response_model=AIModelResponse)
 def get_ai_model(model_id: int, db: Session = Depends(get_db)):
     """Get a specific AI model by ID."""
     model = db.query(AIModel).filter(AIModel.id == model_id).first()
-    
+
     if not model:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="AI model not found"
         )
-    
+
     return model
 
 
@@ -108,12 +115,5 @@ def delete_ai_model(model_id: int, db: Session = Depends(get_db)):
     
     db.delete(model)
     db.commit()
-    
+
     return None
-
-
-@router.get("/categories")
-def get_model_categories(db: Session = Depends(get_db)):
-    """Get all available model categories."""
-    categories = db.query(AIModel.category).distinct().all()
-    return {"categories": [c[0] for c in categories if c[0]]}

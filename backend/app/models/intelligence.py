@@ -68,8 +68,8 @@ class Story(Base):
     __tablename__ = "stories"
 
     id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
-    
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, unique=True)
+
     title = Column(String(255), nullable=False)
     logline = Column(Text, nullable=True)
     synopsis = Column(Text, nullable=True)
@@ -84,13 +84,14 @@ class Story(Base):
     moral_premise = Column(Text, nullable=True)
     
     # Metadata
-    estimated_duration_minutes = Column(Float, default=5.0)
+    estimated_duration_minutes = Column(Float, default=15.0)
     status = Column(String(50), default="draft")  # draft, planned, locked
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relationships
+    project = relationship("Project", back_populates="story")
     acts = relationship("Act", back_populates="story", cascade="all, delete-orphan", order_by="Act.order")
     characters = relationship("CharacterProfile", back_populates="story", cascade="all, delete-orphan")
     environments = relationship("Environment", back_populates="story", cascade="all, delete-orphan")
@@ -202,7 +203,7 @@ class Scene(Base):
     act = relationship("Act", back_populates="scenes")
     environment = relationship("Environment", back_populates="scenes")
     characters = relationship("SceneCharacter", back_populates="scene", cascade="all, delete-orphan")
-    camera_plans = relationship("CameraPlan", back_populates="scene", uselist=False, cascade="all, delete-orphan")
+    camera_plan = relationship("CameraPlan", back_populates="scene", uselist=False, cascade="all, delete-orphan")
     dialogues = relationship("DialogueLine", back_populates="scene", cascade="all, delete-orphan", order_by="DialogueLine.order")
     assets_required = relationship("SceneAsset", back_populates="scene", cascade="all, delete-orphan")
 
@@ -241,7 +242,7 @@ class CameraPlan(Base):
     direction_notes = Column(Text, nullable=True)
     focus_point = Column(String(100), nullable=True)
     
-    scene = relationship("Scene", back_populates="camera_plans")
+    scene = relationship("Scene", back_populates="camera_plan")
 
 
 class DialogueLine(Base):
